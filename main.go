@@ -1,18 +1,46 @@
 package main
 
 import (
+	"awesomeProject/router"
 	"awesomeProject/utils"
 	"context"
 	"os"
+	"time"
 )
 
 var (
-	createAndSaveLoggersFunc = utils.CreateAndSaveLoggers
+	createAndSaveLoggers = utils.CreateAndSaveLoggers
+	sugarFromContext     = utils.SugarFromContext
+	initRouter           = router.Init
 )
 
-// TIP <p>To run your code, right-click the code and select <b>Run</b>.</p> <p>Alternatively, click
-// the <icon src="AllIcons.Actions.Execute"/> icon in the gutter and select the <b>Run</b> menu item from here.</p>
+func heartbeat(ctx context.Context) {
+	ticker := time.NewTicker(1 * time.Minute)
+	sugar, _ := sugarFromContext(ctx)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			sugar.Info("HEARTBEAT")
+		}
+	}
+}
+
 func run(ctx context.Context, args []string) error {
+	go heartbeat(ctx)
+	sugar, err := sugarFromContext(ctx)
+	if err != nil {
+		return err
+	}
+
+	routerErr := initRouter(ctx)
+	if routerErr != nil {
+		sugar.Error("Failed to initialize router: %v", routerErr)
+		return routerErr
+	}
 	return nil
 }
 
@@ -20,12 +48,12 @@ func main() {
 	//TIP <p>Press <shortcut actionId="ShowIntentionActions"/> when your caret is at the underlined text
 	// to see how GoLand suggests fixing the warning.</p><p>Alternatively, if available, click the lightbulb to view possible fixes.</p>
 	ctx := context.Background()
-	ctx, err := createAndSaveLoggersFunc(ctx)
+	ctx, err := createAndSaveLoggers(ctx)
 	if err != nil {
 		os.Exit(1)
 	}
 
-	sugar, err := utils.SugarFromContext(ctx)
+	sugar, err := sugarFromContext(ctx)
 	if err != nil {
 		os.Exit(1)
 	}
