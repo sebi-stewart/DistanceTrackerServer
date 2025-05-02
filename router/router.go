@@ -44,7 +44,7 @@ func AddLoggingMiddleware(ctx context.Context, next http.HandlerFunc) http.Handl
 	}
 }
 
-func HealthCheckHandler(w http.ResponseWriter, r *http.Request) {
+func HealthCheckHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write([]byte("OK"))
 }
@@ -65,6 +65,7 @@ func Init(ctx context.Context) error {
 	}
 
 	mux.HandleFunc("/healthcheck", HealthCheckHandler)
+	mux.HandleFunc("GET /")
 	err := server.ListenAndServe()
 	if err != nil {
 		return err
