@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
+	"os"
 )
 
 var (
@@ -33,20 +35,14 @@ func SaveLoggersToContext(ctx context.Context, logger *zap.Logger, sugar *zap.Su
 }
 
 func CreateAndSaveLoggers(ctx context.Context) (context.Context, error) {
-	config := zap.Config{
-		Level:            zap.NewAtomicLevelAt(zap.DebugLevel),
-		Development:      false,
-		Encoding:         "console",
-		EncoderConfig:    zap.NewDevelopmentEncoderConfig(),
-		OutputPaths:      []string{"stdout", "logfile"},
-		ErrorOutputPaths: []string{"stderr"},
-	}
+	config := zap.NewProductionEncoderConfig()
+	config.EncodeTime = zapcore.TimeEncoderOfLayout("2006-01-02 15:04:05")
+	config.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	consoleEncoder := zapcore.NewConsoleEncoder(config)
+	core := zapcore.NewTee(
+		zapcore.NewCore(consoleEncoder, zapcore.AddSync(zapcore.Lock(os.Stdout)), zapcore.DebugLevel))
 
-	logger, err := config.Build()
-	if err != nil {
-		return ctx, err
-	}
-
+	logger := zap.New(core, zap.AddCaller(), zap.AddStacktrace(zap.PanicLevel))
 	sugar := logger.Sugar()
 	ctx = saveLoggersFunc(ctx, logger, sugar)
 	return ctx, nil
