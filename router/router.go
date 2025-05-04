@@ -1,39 +1,55 @@
 package router
 
 import (
-	"awesomeProject/utils"
+	"DistanceTrackerServer/auth"
+	"DistanceTrackerServer/utils"
 	"context"
 	"fmt"
+	"github.com/google/uuid"
 	"net/http"
 	"time"
 )
 
 var (
-	logIncomingRequest   = LogIncomingRequest
-	logRequestTime       = LogRequestTime
+	logRequest           = LogRequest
 	addLoggingMiddleware = AddLoggingMiddleware
 	sugarFromContext     = utils.SugarFromContext
+	register             = auth.RegisterHandler
+	login                = auth.LoginHandler
+	logout               = auth.LogoutHandler
 )
 
-func formatLogMessage(r *http.Request) string {
+func formatRequestLogMessage(r *http.Request) string {
 	return fmt.Sprintf("%s \t%s \t%s", r.RemoteAddr, r.Method, r.URL)
 }
 
-func LogIncomingRequest(next http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		sugar, _ := sugarFromContext(r.Context())
-		sugar.Info(formatLogMessage(r))
-		next.ServeHTTP(w, r)
-	}
+type LoggingResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+	requestID  string
 }
 
-func LogRequestTime(next http.Handler) http.HandlerFunc {
+func NewLoggingResponseWriter(w http.ResponseWriter) *LoggingResponseWriter {
+	return &LoggingResponseWriter{w, http.StatusOK, uuid.New().String()}
+}
+
+func (lrw *LoggingResponseWriter) WriteHeader(code int) {
+	lrw.statusCode = code
+	lrw.ResponseWriter.WriteHeader(code)
+}
+
+func LogRequest(next http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		next.ServeHTTP(w, r)
-		duration := time.Since(start)
+		lrw := NewLoggingResponseWriter(w)
 		sugar, _ := sugarFromContext(r.Context())
-		sugar.Info(fmt.Sprintf("%s \tRequest took %s", formatLogMessage(r), duration))
+		sugar.Infof("--> %s \t%s", lrw.requestID, formatRequestLogMessage(r))
+		start := time.Now()
+
+		next.ServeHTTP(lrw, r)
+
+		duration := time.Since(start)
+
+		sugar.Infof("<-- %s \t%s \t%d \tRequest took %s", lrw.requestID, formatRequestLogMessage(r), lrw.statusCode, duration)
 	}
 }
 
@@ -53,8 +69,7 @@ func Init(ctx context.Context) error {
 
 	mux := http.NewServeMux()
 	var handler http.Handler = mux
-	handler = addLoggingMiddleware(ctx, logIncomingRequest(handler))
-	handler = addLoggingMiddleware(ctx, logRequestTime(handler))
+	handler = addLoggingMiddleware(ctx, logRequest(handler))
 
 	server := &http.Server{
 		Addr:           ":8080",
@@ -65,7 +80,10 @@ func Init(ctx context.Context) error {
 	}
 
 	mux.HandleFunc("/healthcheck", HealthCheckHandler)
-	mux.HandleFunc("GET /")
+	mux.HandleFunc("POST /register", register)
+	mux.HandleFunc("POST /login", login)
+	mux.HandleFunc("DELETE /logout", logout)
+
 	err := server.ListenAndServe()
 	if err != nil {
 		return err

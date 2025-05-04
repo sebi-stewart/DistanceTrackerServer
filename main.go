@@ -1,8 +1,8 @@
 package main
 
 import (
-	"awesomeProject/router"
-	"awesomeProject/utils"
+	"DistanceTrackerServer/router"
+	"DistanceTrackerServer/utils"
 	"context"
 	"os"
 	"time"
