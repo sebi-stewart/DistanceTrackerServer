@@ -67,8 +67,13 @@ func HealthCheckHandler(ctx *gin.Context) {
 
 func Init(logger *zap.Logger) *gin.Engine {
 	log = logger
+	sugar := log.Sugar()
 
 	router := gin.New()
+	err := router.SetTrustedProxies(nil)
+	if err != nil {
+		sugar.Fatal("Failed to set trusted proxies: ", err)
+	}
 	router.Use(addRouterMiddleware())
 	router.Use(logRequest())
 
