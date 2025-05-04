@@ -2,14 +2,12 @@ package auth
 
 import (
 	"DistanceTrackerServer/utils"
+	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
 var (
-	validateRegistration     = ValidateRegistration
-	parseRequestBody         = utils.ParseRequestBody
-	writeSimpleResponse      = utils.WriteSimpleResponse
-	writeSimpleErrorResponse = utils.WriteSimpleErrorResponse
+	validateRegistration = ValidateRegistration
 )
 
 type UserRegister struct {
@@ -19,51 +17,50 @@ type UserRegister struct {
 	ConfirmPassword string `json:"confirm_password"`
 }
 
-func RegisterHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+func RegisterHandler(ctx *gin.Context) {
 	sugar, err := utils.SugarFromContext(ctx)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte("INTERNAL SERVER ERROR"))
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
 		return
 	}
 
 	newUser := UserRegister{}
-	err = parseRequestBody(r, &newUser)
+	err = ctx.BindJSON(&newUser)
 	if err != nil {
-		writeSimpleErrorResponse(w, sugar, http.StatusBadRequest, err)
+		ctx.JSON(http.StatusBadRequest, err)
 		return
 	}
 
 	validationErr := validateRegistration(newUser)
 	if validationErr != nil {
-		writeSimpleErrorResponse(w, sugar, http.StatusBadRequest, validationErr)
+		sugar.Errorw("Error", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err})
 		return
 	}
 
-	writeSimpleResponse(w, sugar, http.StatusOK, "User registered successfully")
+	ctx.JSON(http.StatusOK, gin.H{"message": "User registered successfully"})
 }
 
-func LoginHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+func LoginHandler(ctx *gin.Context) {
 	sugar, err := utils.SugarFromContext(ctx)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte("INTERNAL SERVER ERROR"))
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
 		return
 	}
 
-	writeSimpleResponse(w, sugar, http.StatusOK, "LOGGED IN")
+	sugar.Info("LOGGED IN")
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "LOGGED IN"})
 }
 
-func LogoutHandler(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+func LogoutHandler(ctx *gin.Context) {
 	sugar, err := utils.SugarFromContext(ctx)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		_, _ = w.Write([]byte("INTERNAL SERVER ERROR"))
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
 		return
 	}
 
-	writeSimpleResponse(w, sugar, http.StatusOK, "LOGGED OUT")
+	sugar.Info("LOGGED OUT")
+
+	ctx.JSON(http.StatusOK, gin.H{"message": "LOGGED OUT"})
 }

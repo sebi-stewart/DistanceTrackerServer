@@ -3,90 +3,79 @@ package router
 import (
 	"DistanceTrackerServer/auth"
 	"DistanceTrackerServer/utils"
-	"context"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"net/http"
 	"time"
 )
 
 var (
-	logRequest           = LogRequest
-	addLoggingMiddleware = AddLoggingMiddleware
-	sugarFromContext     = utils.SugarFromContext
-	register             = auth.RegisterHandler
-	login                = auth.LoginHandler
-	logout               = auth.LogoutHandler
+	log                 *zap.Logger
+	logRequest          = LogRequest
+	addRouterMiddleware = AddRouterMiddleware
+	sugarFromContext    = utils.SugarFromContext
+	register            = auth.RegisterHandler
+	login               = auth.LoginHandler
+	logout              = auth.LogoutHandler
+	healthCheckHandler  = HealthCheckHandler
 )
 
-func formatRequestLogMessage(r *http.Request) string {
-	return fmt.Sprintf("%s \t%s \t%s", r.RemoteAddr, r.Method, r.URL)
-}
+func LogRequest() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
 
-type LoggingResponseWriter struct {
-	http.ResponseWriter
-	statusCode int
-	requestID  string
-}
+		method := ctx.Request.Method
+		endpoint := ctx.Request.URL.String()
+		sugar, _ := sugarFromContext(ctx)
+		user, _ := ctx.Get("user")
 
-func NewLoggingResponseWriter(w http.ResponseWriter) *LoggingResponseWriter {
-	return &LoggingResponseWriter{w, http.StatusOK, uuid.New().String()}
-}
+		sugar.Infow("-->",
+			zap.String("user", fmt.Sprintf("%v", user)),
+			zap.String("method", method),
+			zap.String("endpoint", endpoint),
+		)
 
-func (lrw *LoggingResponseWriter) WriteHeader(code int) {
-	lrw.statusCode = code
-	lrw.ResponseWriter.WriteHeader(code)
-}
-
-func LogRequest(next http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		lrw := NewLoggingResponseWriter(w)
-		sugar, _ := sugarFromContext(r.Context())
-		sugar.Infof("--> %s \t%s", lrw.requestID, formatRequestLogMessage(r))
 		start := time.Now()
-
-		next.ServeHTTP(lrw, r)
+		ctx.Next()
 
 		duration := time.Since(start)
-
-		sugar.Infof("<-- %s \t%s \t%d \tRequest took %s", lrw.requestID, formatRequestLogMessage(r), lrw.statusCode, duration)
+		statusCode := ctx.Writer.Status()
+		sugar.Infow("<--",
+			zap.String("method", method),
+			zap.String("endpoint", endpoint),
+			zap.Int("status_code", statusCode),
+			zap.Duration("duration", duration),
+		)
 	}
 }
 
-func AddLoggingMiddleware(ctx context.Context, next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		r = r.Clone(ctx)
-		next.ServeHTTP(w, r)
+func AddRouterMiddleware() gin.HandlerFunc {
+	return func(ctx *gin.Context) {
+		id := uuid.New()
+		logger := log.With(zap.String("request_id", id.String()))
+		ctx.Set("logger", logger)
+		ctx.Set("sugar", logger.Sugar())
+		ctx.Set("request_id", id.String())
+		ctx.Next()
 	}
 }
 
-func HealthCheckHandler(w http.ResponseWriter, _ *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write([]byte("OK"))
+func HealthCheckHandler(ctx *gin.Context) {
+	ctx.JSON(http.StatusOK, "All good here :D")
 }
 
-func Init(ctx context.Context) error {
+func Init(logger *zap.Logger) *gin.Engine {
+	log = logger
 
-	mux := http.NewServeMux()
-	var handler http.Handler = mux
-	handler = addLoggingMiddleware(ctx, logRequest(handler))
+	router := gin.New()
+	router.Use(addRouterMiddleware())
+	router.Use(logRequest())
 
-	server := &http.Server{
-		Addr:           ":8080",
-		Handler:        handler,
-		ReadTimeout:    10 * time.Second,
-		WriteTimeout:   10 * time.Second,
-		MaxHeaderBytes: 1 << 20,
-	}
+	router.GET("/healthcheck", healthCheckHandler)
+	router.POST("/register", register)
+	router.POST("/login", login)
+	router.DELETE("/logout", logout)
 
-	mux.HandleFunc("/healthcheck", HealthCheckHandler)
-	mux.HandleFunc("POST /register", register)
-	mux.HandleFunc("POST /login", login)
-	mux.HandleFunc("DELETE /logout", logout)
-
-	err := server.ListenAndServe()
-	if err != nil {
-		return err
-	}
-	return nil
+	return router
 }
