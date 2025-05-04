@@ -1,2 +1,9 @@
 .idea
 logfile
+
+*.txt
+*.log
+*.env
+*.pem
+*.p12
+*.key
