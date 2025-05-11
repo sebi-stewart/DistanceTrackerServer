@@ -2,10 +2,14 @@ package router
 
 import (
 	"DistanceTrackerServer/auth"
+	"DistanceTrackerServer/constants"
+	"DistanceTrackerServer/database"
 	"DistanceTrackerServer/utils"
+	"database/sql"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	_ "github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
 	"net/http"
 	"time"
@@ -50,13 +54,14 @@ func LogRequest() gin.HandlerFunc {
 	}
 }
 
-func AddRouterMiddleware() gin.HandlerFunc {
+func AddRouterMiddleware(dbConn *sql.DB) gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		id := uuid.New()
 		logger := log.With(zap.String("request_id", id.String()))
 		ctx.Set("logger", logger)
 		ctx.Set("sugar", logger.Sugar())
 		ctx.Set("request_id", id.String())
+		ctx.Set("dbConn", dbConn)
 		ctx.Next()
 	}
 }
@@ -69,14 +74,27 @@ func Init(logger *zap.Logger) *gin.Engine {
 	log = logger
 	sugar := log.Sugar()
 
+	sugar.Info("intializing sql connection")
+	db, err := sql.Open("sqlite3", constants.DatabaseFile)
+	if err != nil {
+		sugar.Fatal("Failed to open database: ", err)
+	}
+	sugar.Info("Initializing database")
+	err = database.InitDatabase(db)
+	if err != nil {
+		sugar.Fatal("Failed to initialize database: ", err)
+	}
+
+	sugar.Info("Initializing router")
 	router := gin.New()
-	err := router.SetTrustedProxies(nil)
+	err = router.SetTrustedProxies(nil)
 	if err != nil {
 		sugar.Fatal("Failed to set trusted proxies: ", err)
 	}
-	router.Use(addRouterMiddleware())
+	router.Use(addRouterMiddleware(db))
 	router.Use(logRequest())
 
+	sugar.Info("Registering routes")
 	router.GET("/healthcheck", healthCheckHandler)
 	router.POST("/register", register)
 	router.POST("/login", login)

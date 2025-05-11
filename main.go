@@ -1,15 +1,16 @@
 package main
 
 import (
+	"DistanceTrackerServer/constants"
 	"DistanceTrackerServer/router"
 	"DistanceTrackerServer/utils"
+	"fmt"
 	"go.uber.org/zap"
 	"time"
 )
 
 var (
-	sugarFromContext = utils.SugarFromContext
-	initRouter       = router.Init
+	initRouter = router.Init
 )
 
 func heartbeat(sugar *zap.SugaredLogger) {
@@ -34,8 +35,8 @@ func run() {
 		}
 	}()
 
-	sugar.Info("Starting server on port 8080")
-	if err := app.Run(":8080"); err != nil {
+	sugar.Infof("Starting server on port %s", constants.ServerPort)
+	if err := app.Run(fmt.Sprintf(":%s", constants.ServerPort)); err != nil {
 		sugar.Fatal("Failed to start server: ", err)
 	}
 }
