@@ -24,6 +24,7 @@ var (
 	register            = auth.RegisterHandler
 	login               = auth.LoginHandler
 	logout              = auth.LogoutHandler
+	accountLinkCreation = auth.AccountLinkCreationHandler
 	healthCheckHandler  = HealthCheckHandler
 )
 
@@ -101,6 +102,7 @@ func Init(logger *zap.Logger) *gin.Engine {
 	router.POST("/register", register)
 	router.POST("/login", login)
 	router.DELETE("/logout", logout)
+	router.POST("/account-link-creation", accountLinkCreation)
 
 	return router
 }

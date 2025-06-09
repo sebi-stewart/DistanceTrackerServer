@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"DistanceTrackerServer/models"
 	"DistanceTrackerServer/utils"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -52,7 +53,7 @@ func ValidateFirstName(name string) error {
 	return nil
 }
 
-func ValidateRegistration(user UserRegister) error {
+func ValidateRegistration(user models.UserRegister) error {
 	if err := validateEmailFunc(user.Email); err != nil {
 		return err
 	}
@@ -65,7 +66,7 @@ func ValidateRegistration(user UserRegister) error {
 	return nil
 }
 
-func Register(ctx *gin.Context, user UserRegister) (int, error) {
+func Register(ctx *gin.Context, user models.UserRegister) (int, error) {
 	//sugar, err := utils.SugarFromContext(ctx)
 	//if err != nil {
 	//	return fmt.Errorf("failed to retrieve logger from context: %s", err)

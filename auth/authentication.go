@@ -12,6 +12,7 @@ var (
 	validateRegistration = ValidateRegistration
 	register             = Register
 	linkAccounts         = LinkAccounts
+	linkAccountCreation  = CreateUuidLink
 	login                = Login
 )
 
@@ -113,4 +114,32 @@ func AccountLinkHandler(ctx *gin.Context) {
 	sugar.Info("ACCOUNTS LINKED")
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "ACCOUNT LINKED"})
+}
+
+func AccountLinkCreationHandler(ctx *gin.Context) {
+	sugar, err := utils.SugarFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
+		return
+	}
+
+	loginCredentials := models.UserLogin{}
+	err = ctx.BindJSON(&loginCredentials)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	accountLink, err := linkAccountCreation(ctx, loginCredentials)
+	if err != nil {
+		sugar.Errorw("link account creation error",
+			zap.String("Error", err.Error()),
+			zap.String("UserLogin", loginCredentials.ToString()),
+		)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	sugar.Info("LINK CODE CREATED", accountLink.ToString())
+	ctx.JSON(http.StatusOK, gin.H{"message": "LINK CODE CREATED", "pair_uuid": accountLink.PairUUID.String()})
 }
