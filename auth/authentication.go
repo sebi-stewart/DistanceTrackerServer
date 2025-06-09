@@ -1,10 +1,9 @@
 package auth
 
 import (
+	"DistanceTrackerServer/models"
 	"DistanceTrackerServer/utils"
-	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"go.uber.org/zap"
 	"net/http"
 )
@@ -16,36 +15,6 @@ var (
 	login                = Login
 )
 
-type UserRegister struct {
-	Email           string `json:"email"`
-	FirstName       string `json:"first_name"`
-	Password        string `json:"password"`
-	ConfirmPassword string `json:"confirm_password"`
-}
-
-func (u *UserRegister) toString() string {
-	return fmt.Sprintf("{email: %s,\tfirst_name: %s,\tpassword: %s,\tconfirm_password: %s}",
-		u.Email, u.FirstName, u.Password, u.ConfirmPassword,
-	)
-}
-
-type UserLogin struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-}
-
-type AccountLink struct {
-	Email    string    `json:"email"`
-	Password string    `json:"password"`
-	PairUUID uuid.UUID `json:"pair_uuid"`
-}
-
-func (a *AccountLink) toString() string {
-	return fmt.Sprintf("{email: %s,\tpassword: %s,\tpair_uuid: %s}",
-		a.Email, a.Password, a.PairUUID.String(),
-	)
-}
-
 func RegisterHandler(ctx *gin.Context) {
 	sugar, err := utils.SugarFromContext(ctx)
 	if err != nil {
@@ -53,7 +22,7 @@ func RegisterHandler(ctx *gin.Context) {
 		return
 	}
 
-	newUser := UserRegister{}
+	newUser := models.UserRegister{}
 	err = ctx.BindJSON(&newUser)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -71,7 +40,7 @@ func RegisterHandler(ctx *gin.Context) {
 	if err != nil {
 		sugar.Errorw("registration error",
 			zap.String("Error", err.Error()),
-			zap.String("User", newUser.toString()),
+			zap.String("User", newUser.ToString()),
 		)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
@@ -88,7 +57,7 @@ func LoginHandler(ctx *gin.Context) {
 		return
 	}
 
-	loginData := UserLogin{}
+	loginData := models.UserLogin{}
 	err = ctx.BindJSON(&loginData)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -124,7 +93,7 @@ func AccountLinkHandler(ctx *gin.Context) {
 		return
 	}
 
-	accountLink := AccountLink{}
+	accountLink := models.AccountLink{}
 	err = ctx.BindJSON(&accountLink)
 	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -135,7 +104,7 @@ func AccountLinkHandler(ctx *gin.Context) {
 	if linkingErr != nil {
 		sugar.Errorw("linking error",
 			zap.String("Error", linkingErr.Error()),
-			zap.String("AccountLink", accountLink.toString()),
+			zap.String("AccountLink", accountLink.ToString()),
 		)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": linkingErr.Error()})
 		return
