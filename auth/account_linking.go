@@ -78,7 +78,7 @@ func CreateUuidLink(ctx *gin.Context, origin models.UserLogin) (models.AccountLi
 	// Remove any existing linked accounts for the initiator user, or the potential link user
 	// This ensures that the initiator user can only have one link code at a time
 	var existingLinkUserID int
-	err = dbConn.QueryRow("SELECT linked_account FROM users WHERE id = ?", initiatorUserID).Scan(&existingLinkUserID)
+	err = dbConn.QueryRow("SELECT linked_account FROM users WHERE id = ? AND linked_account IS NOT NULL", initiatorUserID).Scan(&existingLinkUserID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return models.AccountLink{}, fmt.Errorf("failed to get existing linked account: %w", err)
 	}
