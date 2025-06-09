@@ -7,6 +7,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+var (
+	createToken = CreateToken
+)
+
 func Login(ctx *gin.Context, email string, password string) (int, error) {
 	// First we get the password hash from the database
 	// Then we compare the password hash with the password
@@ -29,5 +33,11 @@ func Login(ctx *gin.Context, email string, password string) (int, error) {
 	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(password)); err != nil {
 		return 0, fmt.Errorf("password is incorrect: %w", err)
 	}
+
+	tokenString, err := createToken(email)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create token: %w", err)
+	}
+	ctx.SetCookie("token", tokenString, 3600, "/", "", false, true)
 	return userID, nil
 }

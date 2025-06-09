@@ -7,3 +7,5 @@ logfile
 *.pem
 *.p12
 *.key
+*.pub
+*.key*
