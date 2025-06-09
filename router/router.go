@@ -19,13 +19,11 @@ var (
 	log                 *zap.Logger
 	logRequest          = LogRequest
 	addRouterMiddleware = AddRouterMiddleware
-	authenticateRequest = AuthenticateRequest
+	authenticateRequest = auth.AuthenticateRequest
 	sugarFromContext    = utils.SugarFromContext
 	register            = auth.RegisterHandler
 	login               = auth.LoginHandler
-	loginFunc           = auth.Login
 	logout              = auth.LogoutHandler
-	verifyToken         = auth.VerifyToken
 	healthCheckHandler  = HealthCheckHandler
 )
 
@@ -54,39 +52,6 @@ func LogRequest() gin.HandlerFunc {
 			zap.Int("status_code", statusCode),
 			zap.Duration("duration", duration),
 		)
-	}
-}
-
-func AuthenticateRequest() gin.HandlerFunc {
-	return func(ctx *gin.Context) {
-		tokenString, err := ctx.Cookie("token")
-		if err == nil {
-			verificationError := verifyToken(tokenString)
-			if verificationError != nil {
-				ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Credentials"})
-				ctx.Abort()
-			}
-			return
-		}
-
-		user, password, ok := ctx.Request.BasicAuth()
-		if !ok {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Missing credentials"})
-			ctx.Abort()
-			return
-		}
-
-		sugar, _ := sugarFromContext(ctx)
-		sugar.Infow("Authenticating user", zap.String("user", user))
-		sugar.Infow("Authenticating password", zap.String("password", password))
-
-		_, err = loginFunc(ctx, user, password)
-		if err != nil {
-			sugar.Errorw("Authentication error", zap.String("user", user), zap.Error(err))
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Credentials"})
-			ctx.Abort()
-			return
-		}
 	}
 }
 

@@ -15,7 +15,7 @@ var (
 )
 
 func init() {
-	bytes, err := os.ReadFile(constants.JWT_SecretKey)
+	bytes, err := os.ReadFile(constants.JwtSecretkey)
 	if err != nil {
 		panic(err)
 	}
