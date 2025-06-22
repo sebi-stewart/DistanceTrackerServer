@@ -40,16 +40,20 @@ func CreateToken(username string) (string, error) {
 	return tokenString, nil
 }
 
-func VerifyToken(tokenString string) error {
+func VerifyToken(tokenString string) (string, error) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		return secretKey.Public(), nil
 	})
 
 	if err != nil {
-		return fmt.Errorf("failed to parse token: %w", err)
+		return "", fmt.Errorf("failed to parse token: %w", err)
 	}
 	if !token.Valid {
-		return fmt.Errorf("invalid token")
+		return "", fmt.Errorf("invalid token")
 	}
-	return nil
+	username, ok := token.Claims.(jwt.MapClaims)["username"].(string)
+	if !ok {
+		return "", fmt.Errorf("failed to extract username from token")
+	}
+	return username, nil
 }

@@ -30,6 +30,18 @@ func InitDatabase(dbConn *sql.DB) error {
 		CONSTRAINT fk_user FOREIGN KEY(user_id) REFERENCES users(id)
 	)
 	`
+
+	createLocationsTable := `
+	CREATE TABLE IF NOT EXISTS locations (
+	    id INTEGER PRIMARY KEY AUTOINCREMENT,
+	    user_id INTEGER NOT NULL,
+	    latitude REAL NOT NULL,
+	    longitude REAL NOT NULL,
+	    created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	    
+	    CONSTRAINT fk_user_location FOREIGN KEY(user_id) REFERENCES users(id)
+	)
+	`
 	_, err := dbConn.Exec(createUsersTable)
 	if err != nil {
 		return fmt.Errorf("failed to create users table: %w", err)
@@ -38,6 +50,11 @@ func InitDatabase(dbConn *sql.DB) error {
 	_, err = dbConn.Exec(createLinkCodeTable)
 	if err != nil {
 		return fmt.Errorf("failed to create link code table: %w", err)
+	}
+
+	_, err = dbConn.Exec(createLocationsTable)
+	if err != nil {
+		return fmt.Errorf("failed to create locations table: %w", err)
 	}
 
 	return nil
