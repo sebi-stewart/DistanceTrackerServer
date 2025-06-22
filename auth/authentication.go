@@ -99,7 +99,8 @@ func AccountLinkHandler(ctx *gin.Context) {
 	if linkingErr != nil {
 		sugar.Errorw("linking error",
 			zap.String("Error", linkingErr.Error()),
-			zap.String("AccountLink", accountLink.ToString(orgEmail)),
+			zap.String("UserEmail", orgEmail),
+			zap.String("AccountLink", accountLink.ToString()),
 		)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": linkingErr.Error()})
 		return
@@ -117,23 +118,21 @@ func AccountLinkCreationHandler(ctx *gin.Context) {
 		return
 	}
 
-	loginCredentials := models.UserLogin{}
-	err = ctx.BindJSON(&loginCredentials)
+	orgEmail, err := emailFromContext(ctx)
 	if err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
 	}
 
-	accountLink, err := linkAccountCreation(ctx, loginCredentials)
+	accountLink, err := linkAccountCreation(ctx, orgEmail)
 	if err != nil {
 		sugar.Errorw("link account creation error",
 			zap.String("Error", err.Error()),
-			zap.String("UserLogin", loginCredentials.ToString()),
+			zap.String("UserLogin", orgEmail),
 		)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	sugar.Info("LINK CODE CREATED", accountLink.ToString())
-	ctx.JSON(http.StatusOK, gin.H{"message": "LINK CODE CREATED", "pair_uuid": accountLink.PairUUID.String()})
+	ctx.JSON(http.StatusOK, gin.H{"message": "LINK CODE CREATED", "pair_uuid": accountLink.ToString()})
 }

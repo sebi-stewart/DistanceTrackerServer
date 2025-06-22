@@ -32,8 +32,8 @@ type AccountLink struct {
 	PairUUID uuid.UUID `json:"pair_uuid"`
 }
 
-func (a *AccountLink) ToString(email string) string {
-	return fmt.Sprintf("{email: %s,\tpair_uuid: %s}",
-		email, a.PairUUID.String(),
+func (a *AccountLink) ToString() string {
+	return fmt.Sprintf("{pair_uuid: %s}",
+		a.PairUUID.String(),
 	)
 }

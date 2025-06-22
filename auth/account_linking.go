@@ -10,7 +10,10 @@ import (
 
 	"fmt"
 	"github.com/gin-gonic/gin"
-	//"github.com/google/uuid"
+)
+
+var (
+	getUserIdByEmail = utils.GetUserIdByEmail
 )
 
 func LinkAccounts(ctx *gin.Context, link models.AccountLink, orgEmail string) error {
@@ -20,14 +23,9 @@ func LinkAccounts(ctx *gin.Context, link models.AccountLink, orgEmail string) er
 	}
 
 	// First we find the initiator user ID from the email
-	var initiatorUserID int
-	err = dbConn.QueryRow("SELECT id FROM users WHERE email = ?", orgEmail).Scan(&initiatorUserID)
+	initiatorUserID, err := getUserIdByEmail(dbConn, orgEmail)
 	if err != nil {
-		// If the user is not found, we return an error
-		if errors.Is(err, sql.ErrNoRows) {
-			return fmt.Errorf("initiator user not found: %w", err)
-		}
-		return fmt.Errorf("failed to find initiator user: %w", err)
+		return fmt.Errorf("failed to get initiator user ID: %w", err)
 	}
 
 	// Now we find the account to link to
@@ -61,17 +59,18 @@ func LinkAccounts(ctx *gin.Context, link models.AccountLink, orgEmail string) er
 	return nil
 }
 
-func CreateUuidLink(ctx *gin.Context, origin models.UserLogin) (models.AccountLink, error) {
-	//First we login to the origin account to verify credentials
-	initiatorUserID, err := login(ctx, origin.Email, origin.Password)
-	if err != nil {
-		return models.AccountLink{}, err
-	}
+func CreateUuidLink(ctx *gin.Context, orgEmail string) (models.AccountLink, error) {
 
 	pairUUID := uuid.New()
 	dbConn, err := utils.DBConnFromContext(ctx)
 	if err != nil {
 		return models.AccountLink{}, err
+	}
+
+	// First we find the initiator user ID from the email
+	initiatorUserID, err := getUserIdByEmail(dbConn, orgEmail)
+	if err != nil {
+		return models.AccountLink{}, fmt.Errorf("failed to get initiator user ID: %w", err)
 	}
 
 	// Delete any existing link code for the initiator user
@@ -105,8 +104,6 @@ func CreateUuidLink(ctx *gin.Context, origin models.UserLogin) (models.AccountLi
 	}
 
 	link := models.AccountLink{
-		Email:    origin.Email,
-		Password: origin.Password,
 		PairUUID: pairUUID,
 	}
 
