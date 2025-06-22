@@ -75,18 +75,6 @@ func LoginHandler(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "successfully logged in", "user_id": userID})
 }
 
-func LogoutHandler(ctx *gin.Context) {
-	sugar, err := utils.SugarFromContext(ctx)
-	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
-		return
-	}
-
-	sugar.Info("LOGGED OUT")
-
-	ctx.JSON(http.StatusOK, gin.H{"message": "LOGGED OUT"})
-}
-
 func AccountLinkHandler(ctx *gin.Context) {
 	sugar, err := utils.SugarFromContext(ctx)
 	if err != nil {
