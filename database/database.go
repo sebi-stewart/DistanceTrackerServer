@@ -38,6 +38,8 @@ func InitDatabase(dbConn *sql.DB) error {
 	    latitude REAL NOT NULL,
 	    longitude REAL NOT NULL,
 	    created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	    is_valid BOOLEAN DEFAULT TRUE NOT NULL,
+	    validation_reason TEXT NOT NULL DEFAULT '',
 	    
 	    CONSTRAINT fk_user_location FOREIGN KEY(user_id) REFERENCES users(id)
 	)
