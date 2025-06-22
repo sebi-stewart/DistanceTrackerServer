@@ -13,16 +13,21 @@ import (
 	//"github.com/google/uuid"
 )
 
-func LinkAccounts(ctx *gin.Context, link models.AccountLink) error {
-	// First login to the initiator account and get the user ID
-	initiatorUserID, err := login(ctx, link.Email, link.Password)
+func LinkAccounts(ctx *gin.Context, link models.AccountLink, orgEmail string) error {
+	dbConn, err := utils.DBConnFromContext(ctx)
 	if err != nil {
 		return err
 	}
 
-	dbConn, err := utils.DBConnFromContext(ctx)
+	// First we find the initiator user ID from the email
+	var initiatorUserID int
+	err = dbConn.QueryRow("SELECT id FROM users WHERE email = ?", orgEmail).Scan(&initiatorUserID)
 	if err != nil {
-		return err
+		// If the user is not found, we return an error
+		if errors.Is(err, sql.ErrNoRows) {
+			return fmt.Errorf("initiator user not found: %w", err)
+		}
+		return fmt.Errorf("failed to find initiator user: %w", err)
 	}
 
 	// Now we find the account to link to

@@ -29,13 +29,11 @@ func (u *UserLogin) ToString() string {
 }
 
 type AccountLink struct {
-	Email    string    `json:"email"`
-	Password string    `json:"password"`
 	PairUUID uuid.UUID `json:"pair_uuid"`
 }
 
-func (a *AccountLink) ToString() string {
-	return fmt.Sprintf("{email: %s,\tpassword: %s,\tpair_uuid: %s}",
-		a.Email, a.Password, a.PairUUID.String(),
+func (a *AccountLink) ToString(email string) string {
+	return fmt.Sprintf("{email: %s,\tpair_uuid: %s}",
+		email, a.PairUUID.String(),
 	)
 }

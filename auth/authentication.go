@@ -14,10 +14,11 @@ var (
 	linkAccounts         = LinkAccounts
 	linkAccountCreation  = CreateUuidLink
 	login                = Login
+	emailFromContext     = utils.EmailFromContext
 )
 
 func RegisterHandler(ctx *gin.Context) {
-	sugar, err := utils.SugarFromContext(ctx)
+	sugar, err := sugarFromContext(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
 		return
@@ -52,7 +53,7 @@ func RegisterHandler(ctx *gin.Context) {
 }
 
 func LoginHandler(ctx *gin.Context) {
-	sugar, err := utils.SugarFromContext(ctx)
+	sugar, err := sugarFromContext(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
 		return
@@ -76,7 +77,7 @@ func LoginHandler(ctx *gin.Context) {
 }
 
 func AccountLinkHandler(ctx *gin.Context) {
-	sugar, err := utils.SugarFromContext(ctx)
+	sugar, err := sugarFromContext(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
 		return
@@ -89,11 +90,16 @@ func AccountLinkHandler(ctx *gin.Context) {
 		return
 	}
 
-	linkingErr := linkAccounts(ctx, accountLink)
+	orgEmail, err := emailFromContext(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
+	}
+
+	linkingErr := linkAccounts(ctx, accountLink, orgEmail)
 	if linkingErr != nil {
 		sugar.Errorw("linking error",
 			zap.String("Error", linkingErr.Error()),
-			zap.String("AccountLink", accountLink.ToString()),
+			zap.String("AccountLink", accountLink.ToString(orgEmail)),
 		)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": linkingErr.Error()})
 		return
@@ -105,7 +111,7 @@ func AccountLinkHandler(ctx *gin.Context) {
 }
 
 func AccountLinkCreationHandler(ctx *gin.Context) {
-	sugar, err := utils.SugarFromContext(ctx)
+	sugar, err := sugarFromContext(ctx)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
 		return
