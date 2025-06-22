@@ -23,11 +23,6 @@ type UserLogin struct {
 	Password string `json:"password"`
 }
 
-func (u *UserLogin) ToString() string {
-	return fmt.Sprintf("{email: %s,\tpassword: %s}",
-		u.Email, u.Password)
-}
-
 type AccountLink struct {
 	PairUUID uuid.UUID `json:"pair_uuid"`
 }
