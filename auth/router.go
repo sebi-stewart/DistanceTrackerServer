@@ -20,18 +20,18 @@ func AuthenticateRequest() gin.HandlerFunc {
 		}
 		tokenString, err := ctx.Cookie("token")
 		if err == nil {
-			username, verificationError := verifyToken(tokenString)
+			email, verificationError := verifyToken(tokenString)
 			if verificationError != nil {
 				ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Credentials"})
 				ctx.Abort()
 			}
-			ctx.Set("username", username)
+			ctx.Set("email", email)
 			return
 		}
 
 		_, _, ok := ctx.Request.BasicAuth()
 		if !ok {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Missing credentials"})
+			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Missing credentials, please provide a valid token or login"})
 			ctx.Abort()
 			return
 		}

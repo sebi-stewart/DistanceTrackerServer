@@ -26,11 +26,11 @@ func init() {
 	secretKey = key.(*rsa.PrivateKey)
 }
 
-func CreateToken(username string) (string, error) {
+func CreateToken(email string) (string, error) {
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256,
 		jwt.MapClaims{
-			"username": username,
-			"exp":      time.Now().Add(time.Hour * 24).Unix(),
+			"email": email,
+			"exp":   time.Now().Add(time.Hour * 24).Unix(),
 		})
 
 	tokenString, err := token.SignedString(secretKey)
@@ -51,9 +51,9 @@ func VerifyToken(tokenString string) (string, error) {
 	if !token.Valid {
 		return "", fmt.Errorf("invalid token")
 	}
-	username, ok := token.Claims.(jwt.MapClaims)["username"].(string)
+	email, ok := token.Claims.(jwt.MapClaims)["email"].(string)
 	if !ok {
-		return "", fmt.Errorf("failed to extract username from token")
+		return "", fmt.Errorf("failed to extract email from token")
 	}
-	return username, nil
+	return email, nil
 }
