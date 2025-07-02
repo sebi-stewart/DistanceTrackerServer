@@ -64,14 +64,77 @@ func DistanceHandler(ctx *gin.Context) {
 		return
 	}
 
-	err = validateDistanceRequest(location, dbConn, userId)
+	validationErr := validateDistanceRequest(location, dbConn, userId)
+	if validationErr != nil {
+		sugar.Errorw("Distance validation failed, inserting location into database as invalid", "error", validationErr)
+	} else {
+		sugar.Info("Successfully validated Location Request, saving to db and returning partner location to user")
+	}
+
+	err = insertLocationToDB(location, dbConn, userId, validationErr == nil)
 	if err != nil {
-		sugar.Errorw("Distance validation failed", "error", err)
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid distance request"})
+		sugar.Errorw("Error inserting location into database", "error", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
 		return
 	}
-	sugar.Info("Successfully validated Location Request, saving to db and returning partner location to user")
+	if validationErr != nil {
+		sugar.Errorw("Location is invalid, returning error to user", "error", validationErr)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": validationErr.Error()})
+		return
+	}
 
+	partnerLocation, err := retrievePartnerLocation(dbConn, userId)
+	if err != nil {
+		sugar.Errorw("Error retrieving partner location", "error", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
+		return
+	}
+
+	distance := calculateDistance(location, partnerLocation.ToLocation())
+	sugar.Infow("Successfully calculated distance", "distance", distance)
+	ctx.JSON(http.StatusOK, gin.H{
+		"distance": distance,
+	})
+}
+
+func retrievePartnerLocation(dbConn *sql.DB, userId int) (models.LocationFromDB, error) {
+	partnerId, err := utils.GetPartnerIdByUserId(dbConn, userId)
+	if err != nil {
+		return models.LocationFromDB{}, fmt.Errorf("failed to retrieve partner ID: %w", err)
+	}
+
+	if partnerId == 0 {
+		return models.LocationFromDB{}, fmt.Errorf("no partner linked for user ID %d", userId)
+	}
+
+	query := `
+		SELECT latitude, longitude, created_at FROM locations 
+		WHERE user_id = ? AND is_valid = TRUE
+		ORDER BY created_at DESC 
+		LIMIT 1`
+	row := dbConn.QueryRow(query, partnerId)
+
+	var partnerLocation models.LocationFromDB
+	err = row.Scan(&partnerLocation.Latitude, &partnerLocation.Longitude, &partnerLocation.CreatedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return models.LocationFromDB{}, fmt.Errorf("no valid location found for partner ID %d", partnerId)
+		}
+		return models.LocationFromDB{}, fmt.Errorf("failed to scan partner location: %w", err)
+	}
+
+	return partnerLocation, nil
+}
+
+func insertLocationToDB(location models.Location, dbConn *sql.DB, userId int, isValid bool) error {
+	query := `
+		INSERT INTO locations (user_id, latitude, longitude, created_at, is_valid) 
+		VALUES (?, ?, ?, ?, ?)`
+	_, err := dbConn.Exec(query, userId, location.Latitude, location.Longitude, time.Now(), isValid)
+	if err != nil {
+		return fmt.Errorf("failed to insert location into database: %w", err)
+	}
+	return nil
 }
 
 func validateDistanceRequest(currentLocation models.Location, dbConn *sql.DB, userId int) error {
