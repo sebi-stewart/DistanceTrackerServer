@@ -7,7 +7,6 @@ import (
 )
 
 var (
-	loginFunc        = Login
 	verifyToken      = VerifyToken
 	sugarFromContext = utils.SugarFromContext
 )
@@ -38,17 +37,5 @@ func AuthenticateRequest() gin.HandlerFunc {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Basic authentication is not supported, please use token-based authentication"})
 		ctx.Abort()
 		return
-
-		//sugar, _ := sugarFromContext(ctx)
-		//sugar.Infow("Authenticating user", zap.String("user", user))
-		//sugar.Infow("Authenticating password", zap.String("password", password))
-		//
-		//_, err = loginFunc(ctx, user, password)
-		//if err != nil {
-		//	sugar.Errorw("Authentication error", zap.String("user", user), zap.Error(err))
-		//	ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Credentials"})
-		//	ctx.Abort()
-		//	return
-		//}
 	}
 }

@@ -9,8 +9,8 @@ import (
 )
 
 var (
-	createToken        = CreateToken
-	randomHash  []byte = generateRandomHash()
+	createToken = CreateToken
+	randomHash  = generateRandomHash()
 )
 
 func randomString(length int) string {
