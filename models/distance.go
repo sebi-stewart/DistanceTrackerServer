@@ -1,6 +1,9 @@
 package models
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 type Location struct {
 	Longitude float64 `json:"longitude"`
@@ -22,4 +25,12 @@ func (l *LocationFromDB) ToLocation() Location {
 		Longitude: l.Longitude,
 		Latitude:  l.Latitude,
 	}
+}
+
+func (l *LocationFromDB) ToString() string {
+	return "{latitude: " + fmt.Sprintf("%f", l.Latitude) +
+		", longitude: " + fmt.Sprintf("%f", l.Longitude) +
+		", created_at: " + l.CreatedAt.String() +
+		", is_valid: " + fmt.Sprintf("%t", l.IsValid) +
+		", validation_reason: " + l.ValidationReason + "}"
 }

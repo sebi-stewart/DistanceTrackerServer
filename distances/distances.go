@@ -11,6 +11,10 @@ import (
 	"time"
 )
 
+const (
+	savedLocationsToRetrieve = 3
+)
+
 var (
 	emailFromContext  = utils.EmailFromContext
 	dbConnFromContext = utils.DBConnFromContext
@@ -18,13 +22,13 @@ var (
 	cos               = math.Cos
 )
 
-// DistanceHandler
-/**
- This handler is responsible for processing distance-related requests.
-	We will only have one endpoint, as we will use the endpoint to submit the current location of the user and return the
-	distance the partner is away.
-
-*/
+// DistanceHandler /**
+// This handler is responsible for processing distance-related requests.
+//
+//	We will only have one endpoint, as we will use the endpoint to submit the current location of the user and return the
+//	distance the partner is away.
+//
+// */
 func DistanceHandler(ctx *gin.Context) {
 	sugar, err := utils.SugarFromContext(ctx)
 	if err != nil {
@@ -60,16 +64,17 @@ func DistanceHandler(ctx *gin.Context) {
 		return
 	}
 
-	err = ValidateDistanceRequest(location, dbConn, userId)
+	err = validateDistanceRequest(location, dbConn, userId)
 	if err != nil {
 		sugar.Errorw("Distance validation failed", "error", err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid distance request"})
 		return
 	}
+	sugar.Info("Successfully validated Location Request, saving to db and returning partner location to user")
 
 }
 
-func ValidateDistanceRequest(currentLocation models.Location, dbConn *sql.DB, userId int) error {
+func validateDistanceRequest(currentLocation models.Location, dbConn *sql.DB, userId int) error {
 	if currentLocation.Latitude < -90 || currentLocation.Latitude > 90 {
 		return fmt.Errorf("latitude must be between -90 and 90")
 	}
@@ -77,14 +82,19 @@ func ValidateDistanceRequest(currentLocation models.Location, dbConn *sql.DB, us
 		return fmt.Errorf("longitude must be between -180 and 180")
 	}
 
-	locations, err := GetLastNLocations(userId, dbConn, 3)
+	locations, err := getLastNLocations(userId, dbConn, savedLocationsToRetrieve)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve last locations: %w", err)
 	}
 
-	// If we don't have enough locations, we can't validate the distance request
-	if len(locations) < 2 {
+	// If we don't have enough locations, we can't validate the distance request, so we allow it to proceed
+	if len(locations) < (savedLocationsToRetrieve - 1) {
 		return nil
+	}
+
+	avgHistoricalSpeed, err := calculateAverageHistoricalSpeed(locations)
+	if err != nil {
+		return err
 	}
 
 	const maxSpeedKmh = 150.0           // Standard hard limit
@@ -92,21 +102,7 @@ func ValidateDistanceRequest(currentLocation models.Location, dbConn *sql.DB, us
 	const highSpeedThreshold = 300.0    // km, allow high speed for longer distances
 	const insaneSpeedThreshold = 1000.0 // km/h, probably spoofed or plane teleport
 
-	// Historical distances & time differences
-	distance1 := CalculateDistance(locations[2].ToLocation(), locations[1].ToLocation())
-	distance2 := CalculateDistance(locations[1].ToLocation(), locations[0].ToLocation())
-	timeDiff1 := locations[1].CreatedAt.Sub(locations[2].CreatedAt).Hours()
-	timeDiff2 := locations[0].CreatedAt.Sub(locations[1].CreatedAt).Hours()
-
-	if timeDiff1 <= 0 || timeDiff2 <= 0 {
-		return fmt.Errorf("invalid time difference between locations")
-	}
-
-	speed1 := distance1 / timeDiff1
-	speed2 := distance2 / timeDiff2
-	avgHistoricalSpeed := (speed1 + speed2) / 2
-
-	newDistance := CalculateDistance(locations[0].ToLocation(), currentLocation)
+	newDistance := calculateDistance(locations[0].ToLocation(), currentLocation)
 	newTimeDiff := time.Since(locations[0].CreatedAt).Hours()
 
 	if newTimeDiff <= 0 {
@@ -146,8 +142,30 @@ func ValidateDistanceRequest(currentLocation models.Location, dbConn *sql.DB, us
 	return nil
 }
 
-func GetLastNLocations(userID int, dbConn *sql.DB, n int) ([]models.LocationFromDB, error) {
-	query := `SELECT * FROM locations WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`
+func calculateAverageHistoricalSpeed(locations []models.LocationFromDB) (float64, error) {
+	// Historical distances & time differences
+	var summedSpeeds = 0.0
+	for i := 0; i < savedLocationsToRetrieve-1; i++ {
+		distance := calculateDistance(locations[i+1].ToLocation(), locations[i].ToLocation())
+		timeDiff := locations[i].CreatedAt.Sub(locations[i+1].CreatedAt).Hours()
+		if timeDiff <= 0 {
+			return 0, fmt.Errorf("invalid time difference between locations %s and %s", locations[i].ToString(), locations[i+1].ToString())
+		}
+
+		speed := distance / timeDiff
+		summedSpeeds += speed
+	}
+
+	avgHistoricalSpeed := summedSpeeds / float64(savedLocationsToRetrieve-1)
+	return avgHistoricalSpeed, nil
+}
+
+func getLastNLocations(userID int, dbConn *sql.DB, n int) ([]models.LocationFromDB, error) {
+	query := `
+		SELECT latitude, longitude, created_at FROM locations 
+        WHERE user_id = ? AND is_valid = TRUE
+        ORDER BY created_at DESC 
+        LIMIT ?`
 	rows, err := dbConn.Query(query, userID, n)
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve last %d locations for user %d: %w", n, userID, err)
@@ -172,7 +190,7 @@ func GetLastNLocations(userID int, dbConn *sql.DB, n int) ([]models.LocationFrom
 	return locations, nil
 }
 
-func CalculateDistance(loc1, loc2 models.Location) float64 {
+func calculateDistance(loc1, loc2 models.Location) float64 {
 	// Haversine formula to calculate the distance between two points on the Earth
 	const R = 6371 // Radius of the Earth in kilometers
 	lat1 := degreesToRadians(loc1.Latitude)
@@ -188,7 +206,7 @@ func CalculateDistance(loc1, loc2 models.Location) float64 {
 			sin(dlon/2)*sin(dlon/2)
 	c := 2 * math.Atan2(math.Sqrt(a), math.Sqrt(1-a))
 
-	return R * c // Distance in kilometers
+	return math.Abs(R * c) // Distance in kilometers
 }
 
 func degreesToRadians(degrees float64) float64 {
