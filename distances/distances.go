@@ -4,6 +4,7 @@ import (
 	"DistanceTrackerServer/models"
 	"DistanceTrackerServer/utils"
 	"database/sql"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"math"
@@ -117,7 +118,7 @@ func retrievePartnerLocation(dbConn *sql.DB, userId int) (models.LocationFromDB,
 	var partnerLocation models.LocationFromDB
 	err = row.Scan(&partnerLocation.Latitude, &partnerLocation.Longitude, &partnerLocation.CreatedAt)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return models.LocationFromDB{}, fmt.Errorf("no valid location found for partner ID %d", partnerId)
 		}
 		return models.LocationFromDB{}, fmt.Errorf("failed to scan partner location: %w", err)

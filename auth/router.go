@@ -14,7 +14,7 @@ var (
 func AuthenticateRequest() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		// Escape early if the request is the health check, login or register endpoint
-		if ctx.Request.URL.Path == "/healthcheck" || ctx.Request.URL.Path == "/login" || ctx.Request.URL.Path == "/register" {
+		if ctx.Request.URL.Path == "/login" || ctx.Request.URL.Path == "/register" {
 			return
 		}
 		tokenString, err := ctx.Cookie("token")
