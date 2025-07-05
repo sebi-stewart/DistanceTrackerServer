@@ -36,7 +36,7 @@ func LogRequest() gin.HandlerFunc {
 		method := ctx.Request.Method
 		endpoint := ctx.Request.URL.String()
 		sugar, _ := sugarFromContext(ctx)
-		user, _ := ctx.Get("user")
+		user, _ := ctx.Get("email")
 
 		sugar.Infow("-->",
 			zap.String("user", fmt.Sprintf("%v", user)),
