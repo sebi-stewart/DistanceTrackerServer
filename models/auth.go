@@ -28,5 +28,7 @@ type AccountLink struct {
 }
 
 func (a *AccountLink) ToString() string {
-	return a.PairUUID.String()
+	return fmt.Sprintf("{pair_uuid: %s}",
+		a.PairUUID.String(),
+	)
 }

@@ -134,5 +134,5 @@ func AccountLinkCreationHandler(ctx *gin.Context) {
 	}
 
 	sugar.Info("LINK CODE CREATED", accountLink.ToString())
-	ctx.JSON(http.StatusOK, gin.H{"message": "LINK CODE CREATED", "pair_uuid": accountLink.ToString()})
+	ctx.JSON(http.StatusOK, gin.H{"message": "LINK CODE CREATED", "pair_uuid": accountLink.PairUUID})
 }
