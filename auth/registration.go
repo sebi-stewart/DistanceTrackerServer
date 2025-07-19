@@ -94,5 +94,11 @@ func Register(ctx *gin.Context, user models.UserRegister) (int, error) {
 		return 0, fmt.Errorf("failed to get last insert id from db insert: %s", err)
 	}
 
+	tokenString, err := createToken(user.Email)
+	if err != nil {
+		return 0, fmt.Errorf("failed to create token: %w", err)
+	}
+	ctx.SetCookie("token", tokenString, 3600, "/", "", false, true)
+
 	return int(userID), nil
 }

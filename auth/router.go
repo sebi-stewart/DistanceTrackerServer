@@ -12,28 +12,47 @@ var (
 	sugarFromContext = utils.SugarFromContext
 )
 
+type EmailExtractor struct {
+	Email string `json:"email"`
+}
+
 func AuthenticateRequest() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
-		// Escape early if the request is the health check, login or register endpoint
-		if ctx.Request.URL.Path == "/login" || ctx.Request.URL.Path == "/register" {
+		path := ctx.Request.URL.Path
+		tokenString, err := ctx.Cookie("token")
+
+		if path == "/login" || path == "/register" {
+			if err == nil {
+				email, verifyErr := verifyToken(tokenString)
+				if verifyErr != nil {
+					rejectRequest(ctx, http.StatusUnauthorized, "Invalid token")
+					return
+				}
+				rejectRequest(ctx, http.StatusForbidden, "Already logged in, please logout first", email)
+				return
+			}
+			ctx.Set("email", "NEW_USER")
 			return
 		}
-		tokenString, err := ctx.Cookie("token")
+
 		if err == nil {
-			email, verificationError := verifyToken(tokenString)
-			if verificationError != nil {
+			email, verifyErr := verifyToken(tokenString)
+			if verifyErr != nil {
 				rejectRequest(ctx, http.StatusUnauthorized, "Invalid token")
 				return
 			}
 			ctx.Set("email", email)
 			return
 		}
+
 		rejectRequest(ctx, http.StatusUnauthorized, "Missing credentials, please provide a valid token or login")
-		return
 	}
 }
 
-func rejectRequest(ctx *gin.Context, statusCode int, message string) {
+func rejectRequest(ctx *gin.Context, statusCode int, message string, user ...string) {
+	if len(user) > 0 {
+		user = append(user, "anyonymous")
+	}
 	sugar, _ := sugarFromContext(ctx)
 	ctx.JSON(statusCode, gin.H{"error": message})
 	ctx.Abort()
@@ -42,7 +61,7 @@ func rejectRequest(ctx *gin.Context, statusCode int, message string) {
 	endpoint := ctx.Request.URL.String()
 
 	sugar.Infow("<-- Request Rejected -->",
-		zap.String("user", "anyonymous"),
+		zap.String("user", user[0]),
 		zap.String("method", method),
 		zap.String("endpoint", endpoint),
 		zap.Int("status_code", statusCode),
