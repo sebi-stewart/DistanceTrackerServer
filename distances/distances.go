@@ -155,14 +155,8 @@ func validateDistanceRequest(currentLocation models.Location, dbConn *sql.DB, us
 		return nil
 	}
 
-	avgHistoricalSpeed, err := calculateAverageHistoricalSpeed(locations)
-	if err != nil {
-		return err
-	}
-
 	const maxSpeedKmh = 150.0           // Standard hard limit
-	const maxAccelMultiplier = 2.5      // Sudden speed jumps are suspicious
-	const highSpeedThreshold = 300.0    // km, allow high speed for longer distances
+	const highDistanceThreshold = 300.0 // km, allow high speed for longer distances
 	const insaneSpeedThreshold = 1000.0 // km/h, probably spoofed or plane teleport
 
 	newDistance := calculateDistance(locations[0].ToLocation(), currentLocation)
@@ -180,7 +174,7 @@ func validateDistanceRequest(currentLocation models.Location, dbConn *sql.DB, us
 	}
 
 	// Allow high-speed travel if distance is very large
-	if newDistance > highSpeedThreshold {
+	if newDistance > highDistanceThreshold {
 		// Only allow if the time justifies it
 		if newSpeed > 900.0 { // Max reasonable commercial plane speed
 			return fmt.Errorf("high distance (%.2f km) but speed %.2f km/h exceeds realistic air travel", newDistance, newSpeed)
@@ -194,33 +188,7 @@ func validateDistanceRequest(currentLocation models.Location, dbConn *sql.DB, us
 		return fmt.Errorf("new speed %.2f km/h exceeds maximum allowed speed of %.2f km/h", newSpeed, maxSpeedKmh)
 	}
 
-	if newSpeed > avgHistoricalSpeed*maxAccelMultiplier {
-		return fmt.Errorf("new speed %.2f km/h is more than %.2fx the historical average %.2f km/h", newSpeed, maxAccelMultiplier, avgHistoricalSpeed)
-	}
-
-	if avgHistoricalSpeed > 10 && newSpeed < avgHistoricalSpeed/5 {
-		return fmt.Errorf("new speed %.2f km/h is too slow compared to previous average %.2f km/h", newSpeed, avgHistoricalSpeed)
-	}
-
 	return nil
-}
-
-func calculateAverageHistoricalSpeed(locations []models.LocationFromDB) (float64, error) {
-	// Historical distances & time differences
-	var summedSpeeds = 0.0
-	for i := 0; i < savedLocationsToRetrieve-1; i++ {
-		distance := calculateDistance(locations[i+1].ToLocation(), locations[i].ToLocation())
-		timeDiff := locations[i].CreatedAt.Sub(locations[i+1].CreatedAt).Hours()
-		if timeDiff <= 0 {
-			return 0, fmt.Errorf("invalid time difference between locations %s and %s", locations[i].ToString(), locations[i+1].ToString())
-		}
-
-		speed := distance / timeDiff
-		summedSpeeds += speed
-	}
-
-	avgHistoricalSpeed := summedSpeeds / float64(savedLocationsToRetrieve-1)
-	return avgHistoricalSpeed, nil
 }
 
 func getLastNLocations(userID int, dbConn *sql.DB, n int) ([]models.LocationFromDB, error) {
