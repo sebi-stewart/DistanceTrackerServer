@@ -4,7 +4,7 @@ import (
 	"DistanceTrackerServer/auth"
 	"DistanceTrackerServer/constants"
 	"DistanceTrackerServer/database"
-	"DistanceTrackerServer/distances"
+	"DistanceTrackerServer/partner"
 	"DistanceTrackerServer/utils"
 	"database/sql"
 	"fmt"
@@ -17,17 +17,18 @@ import (
 )
 
 var (
-	log                 *zap.Logger
-	logRequest          = LogRequest
-	addRouterMiddleware = AddRouterMiddleware
-	authenticateRequest = auth.AuthenticateRequest
-	sugarFromContext    = utils.SugarFromContext
-	register            = auth.RegisterHandler
-	login               = auth.LoginHandler
-	accountLinkCreation = auth.AccountLinkCreationHandler
-	accountLink         = auth.AccountLinkHandler
-	distanceHandler     = distances.DistanceHandler
-	healthCheckHandler  = HealthCheckHandler
+	log                       *zap.Logger
+	logRequest                = LogRequest
+	addRouterMiddleware       = AddRouterMiddleware
+	authenticateRequest       = auth.AuthenticateRequest
+	sugarFromContext          = utils.SugarFromContext
+	register                  = auth.RegisterHandler
+	login                     = auth.LoginHandler
+	accountLinkCreation       = auth.AccountLinkCreationHandler
+	accountLink               = auth.AccountLinkHandler
+	distanceHandler           = partner.DistanceHandler
+	partnerInfomrationHandler = partner.InformationHandler
+	healthCheckHandler        = HealthCheckHandler
 )
 
 func LogRequest() gin.HandlerFunc {
@@ -106,6 +107,7 @@ func Init(logger *zap.Logger) *gin.Engine {
 	router.POST("/account-link-creation", accountLinkCreation)
 	router.POST("/account-link", accountLink)
 	router.POST("/distance", distanceHandler)
+	router.GET("/partner-information", partnerInfomrationHandler)
 
 	return router
 }
