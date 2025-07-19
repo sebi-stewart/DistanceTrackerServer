@@ -96,8 +96,8 @@ func Init(logger *zap.Logger) *gin.Engine {
 		sugar.Fatal("Failed to set trusted proxies: ", err)
 	}
 	router.Use(addRouterMiddleware(db))
-	router.Use(logRequest())
 	router.Use(authenticateRequest())
+	router.Use(logRequest())
 
 	sugar.Info("Registering routes")
 	router.GET("/healthcheck", healthCheckHandler)

@@ -3,6 +3,7 @@ package auth
 import (
 	"DistanceTrackerServer/utils"
 	"github.com/gin-gonic/gin"
+	"go.uber.org/zap"
 	"net/http"
 )
 
@@ -21,21 +22,30 @@ func AuthenticateRequest() gin.HandlerFunc {
 		if err == nil {
 			email, verificationError := verifyToken(tokenString)
 			if verificationError != nil {
-				ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid Credentials"})
-				ctx.Abort()
+				rejectRequest(ctx, http.StatusUnauthorized, "Invalid token")
+				return
 			}
 			ctx.Set("email", email)
 			return
 		}
-
-		_, _, ok := ctx.Request.BasicAuth()
-		if !ok {
-			ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Missing credentials, please provide a valid token or login"})
-			ctx.Abort()
-			return
-		}
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Basic authentication is not supported, please use token-based authentication"})
-		ctx.Abort()
+		rejectRequest(ctx, http.StatusUnauthorized, "Missing credentials, please provide a valid token or login")
 		return
 	}
+}
+
+func rejectRequest(ctx *gin.Context, statusCode int, message string) {
+	sugar, _ := sugarFromContext(ctx)
+	ctx.JSON(statusCode, gin.H{"error": message})
+	ctx.Abort()
+
+	method := ctx.Request.Method
+	endpoint := ctx.Request.URL.String()
+
+	sugar.Infow("<-- Request Rejected -->",
+		zap.String("user", "anyonymous"),
+		zap.String("method", method),
+		zap.String("endpoint", endpoint),
+		zap.Int("status_code", statusCode),
+		zap.String("message", message),
+	)
 }
