@@ -79,7 +79,6 @@ func DistanceHandler(ctx *gin.Context) {
 		return
 	}
 	if validationErr != nil {
-		sugar.Errorw("Location is invalid, returning error to user", "error", validationErr)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": validationErr.Error()})
 		return
 	}
@@ -152,7 +151,7 @@ func validateDistanceRequest(currentLocation models.Location, dbConn *sql.DB, us
 	}
 
 	// If we don't have enough locations, we can't validate the distance request, so we allow it to proceed
-	if len(locations) < (savedLocationsToRetrieve - 1) {
+	if len(locations) < (savedLocationsToRetrieve) {
 		return nil
 	}
 

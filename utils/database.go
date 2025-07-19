@@ -16,7 +16,7 @@ func DBConnFromContext(ctx *gin.Context) (*sql.DB, error) {
 }
 
 func GetPartnerIdByUserId(dbConn *sql.DB, userId int) (int, error) {
-	var partnerId int
+	var partnerId *int
 	err := dbConn.QueryRow("SELECT linked_account FROM users WHERE id = ?", userId).Scan(&partnerId)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -24,5 +24,8 @@ func GetPartnerIdByUserId(dbConn *sql.DB, userId int) (int, error) {
 		}
 		return 0, fmt.Errorf("failed to query partner ID by user ID: %w", err)
 	}
-	return partnerId, nil
+	if partnerId == nil {
+		return 0, fmt.Errorf("no partner linked for user ID %d", userId)
+	}
+	return *partnerId, nil
 }
