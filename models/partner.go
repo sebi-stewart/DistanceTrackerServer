@@ -34,3 +34,8 @@ func (l *LocationFromDB) ToString() string {
 		", is_valid: " + fmt.Sprintf("%t", l.IsValid) +
 		", validation_reason: " + l.ValidationReason + "}"
 }
+
+type UserInformation struct {
+	Email     string `json:"email"`
+	FirstName string `json:"first_name"`
+}

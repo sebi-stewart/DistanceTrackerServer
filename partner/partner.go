@@ -88,13 +88,26 @@ func InformationHandler(ctx *gin.Context) {
 		return
 	}
 
+	dbConn, err := dbConnFromContext(ctx)
+	if err != nil {
+		sugar.Errorw("Error retrieving database connection from context", "error", err)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
+		return
+	}
+
 	userEmail, err := emailFromContext(ctx)
 	if err != nil {
 		sugar.Errorw("Error retrieving email from context", "error", err)
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{
-		"email": userEmail,
-	})
+
+	info, retrievalErr := Information(dbConn, userEmail)
+	if retrievalErr != nil {
+		sugar.Errorw("Error retrieving partner information", "error", retrievalErr)
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
+		return
+	}
+	sugar.Info("Successfully retrieved partner information", "info", info)
+	ctx.JSON(http.StatusOK, info)
 }
