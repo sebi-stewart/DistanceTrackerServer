@@ -8,6 +8,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"net/mail"
 	"regexp"
+	"unicode"
 )
 
 var (
@@ -38,6 +39,32 @@ func ValidatePassword(password string, confirmPassword string) error {
 	}
 	if password != confirmPassword {
 		return fmt.Errorf("passwords do not match")
+	}
+
+	hasUpper := false
+	hasLower := false
+	hasNumber := false
+	hasSpecial := false
+
+	for _, char := range password {
+		if unicode.IsUpper(char) {
+			hasUpper = true
+		} else if unicode.IsLower(char) {
+			hasLower = true
+		} else if unicode.IsDigit(char) {
+			hasNumber = true
+		} else if unicode.IsPunct(char) || unicode.IsSymbol(char) {
+			hasSpecial = true
+		} else if unicode.IsSpace(char) {
+			return fmt.Errorf("password cannot contain spaces")
+		}
+	}
+
+	if !hasUpper || !hasLower || !hasNumber || !hasSpecial {
+		return fmt.Errorf("password must contain at least one uppercase letter, one lowercase letter, one number, and one special character")
+	}
+	if len(password) < 8 {
+		return fmt.Errorf("password must be at least 8 characters long")
 	}
 	return nil
 }
