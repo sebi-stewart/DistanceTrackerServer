@@ -21,31 +21,27 @@ func AuthenticateRequest() gin.HandlerFunc {
 		path := ctx.Request.URL.Path
 		tokenString, err := ctx.Cookie("token")
 
+		if err != nil { // no token provdided
+			if path == "/login" || path == "/register" {
+				ctx.Set("email", "NEW_USER")
+				return
+			}
+			rejectRequest(ctx, http.StatusUnauthorized, "Missing credentials, please provide a valid token or login")
+			return
+		}
+
+		email, verifyErr := verifyToken(tokenString)
+		if verifyErr != nil {
+			rejectRequest(ctx, http.StatusUnauthorized, "Invalid token")
+			return
+		}
+
 		if path == "/login" || path == "/register" {
-			if err == nil {
-				email, verifyErr := verifyToken(tokenString)
-				if verifyErr != nil {
-					rejectRequest(ctx, http.StatusUnauthorized, "Invalid token")
-					return
-				}
-				rejectRequest(ctx, http.StatusForbidden, "Already logged in, please logout first", email)
-				return
-			}
-			ctx.Set("email", "NEW_USER")
+			rejectRequest(ctx, http.StatusForbidden, "Already logged in, please logout first", email)
 			return
 		}
 
-		if err == nil {
-			email, verifyErr := verifyToken(tokenString)
-			if verifyErr != nil {
-				rejectRequest(ctx, http.StatusUnauthorized, "Invalid token")
-				return
-			}
-			ctx.Set("email", email)
-			return
-		}
-
-		rejectRequest(ctx, http.StatusUnauthorized, "Missing credentials, please provide a valid token or login")
+		ctx.Set("email", email)
 	}
 }
 
