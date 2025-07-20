@@ -108,6 +108,6 @@ func InformationHandler(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "INTERNAL SERVER ERROR"})
 		return
 	}
-	sugar.Info("Successfully retrieved partner information", "info", info)
+	sugar.Infow("Successfully retrieved partner information", "info", info)
 	ctx.JSON(http.StatusOK, info)
 }
