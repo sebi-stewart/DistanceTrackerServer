@@ -20,6 +20,7 @@ var (
 	log                       *zap.Logger
 	logRequest                = LogRequest
 	addRouterMiddleware       = AddRouterMiddleware
+	interceptBannedIp         = auth.CheckIfIpIsBanned
 	authenticateRequest       = auth.AuthenticateRequest
 	sugarFromContext          = utils.SugarFromContext
 	register                  = auth.RegisterHandler
@@ -97,6 +98,7 @@ func Init(logger *zap.Logger) *gin.Engine {
 		sugar.Fatal("Failed to set trusted proxies: ", err)
 	}
 	router.Use(addRouterMiddleware(db))
+	router.Use(interceptBannedIp())
 	router.Use(authenticateRequest())
 	router.Use(logRequest())
 

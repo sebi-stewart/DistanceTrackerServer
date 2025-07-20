@@ -39,9 +39,34 @@ func InitDatabase(dbConn *sql.DB) error {
 	    longitude REAL NOT NULL,
 	    created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
 	    is_valid BOOLEAN DEFAULT TRUE NOT NULL,
-	    validation_reason TEXT NOT NULL DEFAULT '',
+	    validation_reason TEXT DEFAULT '' NOT NULL,
 	    
 	    CONSTRAINT fk_user_location FOREIGN KEY(user_id) REFERENCES users(id)
+	)
+	`
+
+	createRejectedRequestsTable := `
+	CREATE TABLE IF NOT EXISTS rejected_requests (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_email VARCHAR(50) NOT NULL,
+		status_code INTEGER NOT NULL,
+		reason TEXT NOT NULL,
+	    ip_address VARCHAR(45) NOT NULL,
+		created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+	)
+	`
+
+	createBannedIpTable := `
+	CREATE TABLE IF NOT EXISTS banned_ips (
+	 	id INTEGER PRIMARY KEY AUTOINCREMENT,
+	 	ip_address VARCHAR(45) NOT NULL UNIQUE,
+	    reason TEXT NOT NULL,
+	    last_banned_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+	    banned_length REAL NOT NULL,
+	    banned_until DATETIME NOT NULL,
+	    banned_times INTEGER DEFAULT 1 NOT NULL,
+	    
+	    CONSTRAINT chk_banned_until CHECK (banned_until > last_banned_at)
 	)
 	`
 	_, err := dbConn.Exec(createUsersTable)
@@ -57,6 +82,16 @@ func InitDatabase(dbConn *sql.DB) error {
 	_, err = dbConn.Exec(createLocationsTable)
 	if err != nil {
 		return fmt.Errorf("failed to create locations table: %w", err)
+	}
+
+	_, err = dbConn.Exec(createRejectedRequestsTable)
+	if err != nil {
+		return fmt.Errorf("failed to create request rejection table: %w", err)
+	}
+
+	_, err = dbConn.Exec(createBannedIpTable)
+	if err != nil {
+		return fmt.Errorf("failed to create banned IP table: %w", err)
 	}
 
 	return nil
